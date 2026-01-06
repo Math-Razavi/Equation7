@@ -1,0 +1,535 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>آزمایشگاه جبر (بهینه شده موبایل)</title>
+    <style>
+        /* === تنظیمات پایه === */
+        body { 
+            font-family: 'Segoe UI', Tahoma, sans-serif; 
+            background-color: #f0f4f8; 
+            text-align: center; 
+            padding: 10px; 
+            margin: 0;
+            color: #333;
+        }
+        
+        .container { 
+            max-width: 900px; 
+            width: 95%; /* عرض برای موبایل */
+            margin: 0 auto; 
+            background: white; 
+            padding: 20px 15px; /* پدینگ کمتر برای موبایل */
+            border-radius: 20px; 
+            box-shadow: 0 8px 30px rgba(0,0,0,0.1); 
+            box-sizing: border-box;
+        }
+
+        /* === راهنمای فارسی سبز === */
+        .help-box {
+            background-color: #e8f5e9;
+            color: #2e7d32;
+            border: 2px solid #c8e6c9;
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 20px;
+            text-align: right;
+            line-height: 1.8;
+            font-size: 0.95rem;
+        }
+        .help-box h3 { margin: 0 0 5px 0; border-bottom: 1px solid #a5d6a7; padding-bottom: 5px; display: inline-block; font-size: 1.1rem; }
+        .help-box ul { margin: 5px 0; padding-right: 20px; }
+
+        /* ورودی */
+        .input-panel { 
+            background: #e3f2fd; padding: 15px; border-radius: 12px; 
+            border: 2px solid #90caf9; margin-bottom: 20px; 
+            display: flex; flex-direction: column; align-items: center; gap: 10px; 
+        }
+        
+        input { 
+            direction: ltr; font-family: monospace; font-weight: bold; 
+            font-size: 1.2rem; padding: 8px; text-align: center; 
+            border: 2px solid #ccc; border-radius: 8px; width: 100%; max-width: 220px; 
+        }
+        
+        .btn-main { 
+            background-color: #1976d2; color: white; padding: 10px 25px; 
+            border: none; border-radius: 8px; cursor: pointer; 
+            font-weight: bold; font-size: 1rem; box-shadow: 0 4px 0 #0d47a1; 
+            transition: 0.1s; 
+        }
+        .btn-main:active { transform: translateY(4px); box-shadow: none; }
+
+        /* نمایشگر معادله */
+        #live-display { 
+            display: none; margin: 15px auto; padding: 10px 20px; 
+            background: #fff8e1; border: 3px solid #ffca28; 
+            border-radius: 50px; font-size: 1.6rem; font-weight: bold; 
+            color: #e65100; direction: ltr; overflow-wrap: break-word;
+        }
+
+        /* === سیستم ترازو (بهینه شده) === */
+        #scale-container { display: none; position: relative; height: 340px; margin-top: 30px; width: 100%; }
+        
+        .base-pole { position: absolute; bottom: 0; left: 50%; transform: translateX(-50%); width: 16px; height: 160px; background: #546e7a; border-radius: 10px 10px 0 0; }
+        .base-plate { position: absolute; bottom: 0; left: 50%; transform: translateX(-50%); width: 140px; height: 15px; background: #37474f; border-radius: 10px; }
+        
+        .beam { 
+            position: absolute; top: 180px; left: 50%; 
+            width: 500px; height: 10px; background: #78909c; 
+            margin-left: -250px; /* نصف عرض */
+            border-radius: 5px; transform-origin: center; 
+            transition: transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1); 
+        }
+
+        .pan { 
+            position: absolute; top: 0; width: 140px; height: 140px; 
+            background: rgba(255, 255, 255, 0.95); 
+            border: 2px solid #b0bec5; border-bottom: 6px solid #546e7a; 
+            border-radius: 0 0 25px 25px; 
+            display: flex; flex-direction: row; flex-wrap: wrap-reverse; 
+            align-content: flex-start; justify-content: center; gap: 3px; padding: 5px;
+            transition: transform 0.5s ease; 
+            overflow-y: auto; overflow-x: hidden;
+        }
+        
+        .pan-left { left: 0; } .pan-right { right: 0; }
+        .rope { position: absolute; top: -80px; left: 50%; width: 3px; height: 80px; background: #b0bec5; z-index: -1; }
+
+        /* آیتم‌ها */
+        .item { flex: 0 0 auto; display: flex; align-items: center; justify-content: center; font-weight: bold; position: relative; box-shadow: 0 2px 3px rgba(0,0,0,0.2); }
+        .item-unit { width: 24px; height: 24px; border-radius: 50%; font-size: 10px; font-family: Arial; direction: ltr; }
+        .item-unit.pos { background: #fff; border: 2px solid #fbc02d; color: #333; }
+        .item-unit.neg { background: #333; border: 2px solid #000; color: #fff; }
+        .item-x { width: 28px; height: 28px; border-radius: 4px; color: white; font-family: monospace; font-size: 1rem; direction: ltr; }
+        .item-x.pos { background: #039be5; border: 2px solid #01579b; }
+        .item-x.neg { background: #e53935; border: 2px solid #b71c1c; }
+
+        .exploding { animation: pop 0.4s forwards; }
+        @keyframes pop { 0% {transform: scale(1); opacity: 1;} 50% {transform: scale(1.4); background: red;} 100% {transform: scale(0); opacity: 0;} }
+
+        /* کنترل‌ها */
+        #controls-wrapper { display: none; justify-content: center; gap: 30px; margin-top: 30px; flex-direction: row-reverse; flex-wrap: wrap; }
+        .control-group { background: #eceff1; padding: 10px; border-radius: 12px; border: 1px solid #cfd8dc; display: flex; flex-direction: column; gap: 8px; align-items: center; min-width: 120px; }
+        .row-btn { display: flex; gap: 8px; }
+        
+        .btn-act { 
+            cursor: pointer; border: none; font-weight: bold; 
+            display: flex; align-items: center; justify-content: center; 
+            box-shadow: 0 2px 0 rgba(0,0,0,0.1); transition: 0.1s;
+            direction: ltr; font-family: monospace; 
+        }
+        .btn-act:active { transform: translateY(2px); box-shadow: none; }
+
+        .b-circle { width: 38px; height: 38px; border-radius: 50%; font-size: 1rem; }
+        .b-sq { width: 42px; height: 34px; border-radius: 5px; font-size: 0.9rem; }
+        
+        .c-plus { background: #fff9c4; color: #f57f17; border: 1px solid #fbc02d; }
+        .c-minus { background: #546e7a; color: white; border: 1px solid #37474f; }
+        .x-plus { background: #b3e5fc; color: #01579b; border: 1px solid #0288d1; }
+        .x-minus { background: #ffcdd2; color: #b71c1c; border: 1px solid #d32f2f; }
+
+        /* تقسیم */
+        #div-section { display: none; margin-top: 20px; background: #e8eaf6; padding: 15px; border-radius: 10px; border: 2px dashed #3f51b5; }
+        .mini-scales-grid { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin-top: 15px; direction: ltr; }
+        .mini-box { background: white; padding: 5px 12px; border-radius: 8px; border: 1px solid #ccc; display: flex; align-items: center; gap: 5px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        .final-msg { 
+            font-size: 1.8rem; color: green; font-weight: bold; margin-top: 15px; 
+            direction: ltr; display: flex; align-items: center; justify-content: center; 
+            gap: 10px; flex-wrap: wrap; font-family: 'Times New Roman', serif;
+        }
+        .error-msg { color: #d32f2f; font-weight: bold; display: none; margin-top: 10px; }
+
+        /* استایل کسر عمودی */
+        .frac-box { display: inline-flex; align-items: center; vertical-align: middle; margin: 0 4px; font-size: 1.2rem; color: #333; }
+        .frac-col { display: flex; flex-direction: column; align-items: center; }
+        .frac-num { border-bottom: 2px solid #333; padding: 0 3px; display: block; text-align: center; }
+        .frac-den { padding: 0 3px; display: block; text-align: center; }
+        .frac-sign { margin-right: 3px; font-weight: bold; }
+
+        /* === فوتر نویسنده === */
+        .author-footer {
+            margin-top: 40px;
+            padding-top: 15px;
+            border-top: 1px solid #ddd;
+            font-size: 0.9rem;
+            color: #555;
+            font-weight: bold;
+            font-family: 'Segoe UI', Tahoma, sans-serif;
+        }
+
+        /* === واکنش‌گرایی برای موبایل (Mobile Responsive) === */
+        @media (max-width: 600px) {
+            .beam {
+                width: 90% !important; /* استفاده از درصد */
+                margin-left: -45% !important; /* نصف 90 درصد */
+            }
+            .pan {
+                width: 110px;
+                height: 120px;
+            }
+            #controls-wrapper {
+                gap: 10px;
+            }
+            .btn-act {
+                width: 35px; height: 35px; /* کمی کوچک‌تر */
+            }
+            .b-sq { width: 40px; height: 32px; }
+            #scale-container { height: 320px; }
+            .help-box { font-size: 0.85rem; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>آزمایشگاه جبر</h2>
+
+    <div class="help-box">
+        <h3>راهنمای استفاده:</h3>
+        <ul>
+            <li><strong>مرحله ۱:</strong> معادله را وارد کنید (مثلاً <code>3x + 2 = x + 8</code>) و دکمه "ساخت مدل" را بزنید.</li>
+            <li><strong>مرحله ۲:</strong> با دکمه‌های پایین، متغیرها و اعداد را کم یا زیاد کنید تا معادله ساده شود.</li>
+            <li><strong>مرحله ۳:</strong> وقتی ترازو متعادل و ساده شد، عدد ضریب x را برای تقسیم وارد کنید.</li>
+        </ul>
+    </div>
+
+    <div class="input-panel">
+        <label>معادله را وارد کنید (اعداد انگلیسی):</label>
+        <div style="display:flex; gap:5px; flex-wrap:wrap; justify-content:center;">
+            <input type="text" id="eqInput" value="3x + 2 = x + 8" placeholder="Example: 3x = x + 4">
+            <button class="btn-main" onclick="startApp()">ساخت مدل</button>
+        </div>
+    </div>
+
+    <div id="live-display">...</div>
+
+    <div id="scale-container">
+        <div class="base-pole"></div>
+        <div class="base-plate"></div>
+        <div class="beam" id="beam">
+            <div class="pan pan-left" id="cont-left"></div>
+            <div class="pan pan-right" id="cont-right"></div>
+        </div>
+    </div>
+
+    <div id="controls-wrapper">
+        <div class="control-group">
+            <small>کفه چپ</small>
+            <div class="row-btn">
+                <button class="btn-act b-circle c-plus" onclick="modify('left','u',1)">+1</button>
+                <button class="btn-act b-circle c-minus" onclick="modify('left','u',-1)">-1</button>
+            </div>
+            <div class="row-btn">
+                <button class="btn-act b-sq x-plus" onclick="modify('left','x',1)">+x</button>
+                <button class="btn-act b-sq x-minus" onclick="modify('left','x',-1)">-x</button>
+            </div>
+        </div>
+        
+        <div class="control-group">
+            <small>کفه راست</small>
+            <div class="row-btn">
+                <button class="btn-act b-circle c-plus" onclick="modify('right','u',1)">+1</button>
+                <button class="btn-act b-circle c-minus" onclick="modify('right','u',-1)">-1</button>
+            </div>
+            <div class="row-btn">
+                <button class="btn-act b-sq x-plus" onclick="modify('right','x',1)">+x</button>
+                <button class="btn-act b-sq x-minus" onclick="modify('right','x',-1)">-x</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="div-section">
+        <p>ترازو متعادل است. تقسیم بر ضریب x:</p>
+        <div style="display:flex; gap:10px; justify-content:center; align-items:center;">
+            <span>تقسیم بر:</span>
+            <input type="number" id="divInput" style="width:70px;" placeholder="?">
+            <button class="btn-main" onclick="runDivision()">انجام بده</button>
+        </div>
+        <div id="divErr" class="error-msg">عدد اشتباه است!</div>
+        <div id="divRes" class="mini-scales-grid"></div>
+        <div id="ans-zone" style="margin-top:15px; display:none; justify-content:center;"></div>
+    </div>
+
+    <div class="author-footer">
+        اثری از: مرتضی پوردولت ، دبیر ریاضی مدارس سمپاد مشهد
+    </div>
+</div>
+
+<script>
+    // === STATE ===
+    let model = { left: { x: 0, u: 0 }, right: { x: 0, u: 0 }, solvedX: 0 };
+
+    // === ELEMENTS ===
+    const ui = {
+        eqIn: document.getElementById('eqInput'),
+        live: document.getElementById('live-display'),
+        scale: document.getElementById('scale-container'),
+        ctrl: document.getElementById('controls-wrapper'),
+        divSec: document.getElementById('div-section'),
+        divRes: document.getElementById('divRes'),
+        ansZone: document.getElementById('ans-zone'),
+        divErr: document.getElementById('divErr'),
+        divIn: document.getElementById('divInput'),
+        beam: document.getElementById('beam'),
+        panL: document.getElementById('cont-left'),
+        panR: document.getElementById('cont-right')
+    };
+
+    // === START ===
+    function startApp() {
+        const raw = ui.eqIn.value;
+        if(parseRegex(raw)) {
+            ui.live.style.display = 'block';
+            ui.scale.style.display = 'block';
+            ui.ctrl.style.display = 'flex';
+            ui.divSec.style.display = 'none';
+            ui.divRes.innerHTML = '';
+            ui.ansZone.innerHTML = '';
+            ui.ansZone.style.display = 'none';
+            ui.divErr.style.display = 'none';
+            
+            render();
+            recalcPhysics();
+        } else {
+            alert("معادله نامعتبر است. لطفاً از اعداد انگلیسی استفاده کنید.");
+        }
+    }
+
+    // === PARSER (Regex) ===
+    function parseRegex(str) {
+        str = str.toLowerCase().replace(/\s/g, '');
+        const sides = str.split('=');
+        if (sides.length !== 2) return false;
+
+        const parseSide = (s) => {
+            const regex = /[+\-]?(?:(?:\d*\.?\d+)?x|\d*\.?\d+)/g;
+            const matches = s.match(regex);
+            let x = 0, u = 0;
+            if (matches) {
+                matches.forEach(m => {
+                    if (m.includes('x')) {
+                        let coef = m.replace('x', '');
+                        if (coef === '' || coef === '+') x += 1;
+                        else if (coef === '-') x -= 1;
+                        else x += parseFloat(coef);
+                    } else {
+                        u += parseFloat(m);
+                    }
+                });
+            }
+            return { x, u };
+        };
+
+        model.left = parseSide(sides[0]);
+        model.right = parseSide(sides[1]);
+
+        const dx = model.left.x - model.right.x;
+        const du = model.right.u - model.left.u;
+        model.solvedX = (dx === 0) ? 0 : (du / dx);
+        return true;
+    }
+
+    // === MODIFY ===
+    function modify(side, type, val) {
+        const target = side === 'left' ? model.left : model.right;
+        const container = side === 'left' ? ui.panL : ui.panR;
+        
+        let curr = (type === 'x') ? target.x : target.u;
+        const isAnnihilation = (val > 0 && curr < 0) || (val < 0 && curr > 0);
+
+        if (isAnnihilation) {
+            animatePop(container, type, val, () => {
+                if (type === 'x') target.x += val; else target.u += val;
+                render();
+                recalcPhysics();
+            });
+        } else {
+            if (type === 'x') target.x += val; else target.u += val;
+            render();
+            recalcPhysics();
+        }
+    }
+
+    function animatePop(container, type, val, callback) {
+        const temp = document.createElement('div');
+        let selector = '';
+
+        if (type === 'x') {
+            const cls = val > 0 ? 'pos' : 'neg';
+            temp.className = `item item-x ${cls}`;
+            temp.innerText = val > 0 ? 'x' : '-x';
+            selector = val > 0 ? '.item-x.neg' : '.item-x.pos';
+        } else {
+            const cls = val > 0 ? 'pos' : 'neg';
+            temp.className = `item item-unit ${cls}`;
+            temp.innerText = val > 0 ? '+1' : '-1';
+            selector = val > 0 ? '.item-unit.neg' : '.item-unit.pos';
+        }
+        
+        container.appendChild(temp);
+        const target = container.querySelector(selector);
+
+        if (target) {
+            requestAnimationFrame(() => {
+                temp.classList.add('exploding');
+                target.classList.add('exploding');
+                setTimeout(() => { callback(); }, 400);
+            });
+        } else {
+            callback();
+        }
+    }
+
+    // === RENDER ===
+    function render() {
+        fill(ui.panL, model.left);
+        fill(ui.panR, model.right);
+    }
+
+    function fill(div, data) {
+        div.innerHTML = '';
+        for (let i = 0; i < Math.abs(data.x); i++) {
+            let el = document.createElement('div');
+            el.className = `item item-x ${data.x > 0 ? 'pos' : 'neg'}`;
+            el.innerText = data.x > 0 ? 'x' : '-x';
+            div.appendChild(el);
+        }
+        for (let i = 0; i < Math.abs(data.u); i++) {
+            let el = document.createElement('div');
+            el.className = `item item-unit ${data.u > 0 ? 'pos' : 'neg'}`;
+            el.innerText = data.u > 0 ? '+1' : '-1';
+            div.appendChild(el);
+        }
+    }
+
+    // === PHYSICS ===
+    function recalcPhysics() {
+        const vL = (model.left.x * model.solvedX) + model.left.u;
+        const vR = (model.right.x * model.solvedX) + model.right.u;
+        
+        let sym = "=";
+        if (vL > vR + 0.001) sym = ">";
+        else if (vL < vR - 0.001) sym = "<";
+
+        ui.live.innerText = fmt(model.left) + " " + sym + " " + fmt(model.right);
+
+        const diff = vR - vL;
+        const deg = Math.max(-25, Math.min(25, diff * 1.5));
+        
+        ui.beam.style.transform = `translateX(-50%) rotate(${deg}deg)`;
+        
+        if(ui.panL.parentElement) ui.panL.parentElement.style.transform = `rotate(${-deg}deg)`;
+        if(ui.panR.parentElement) ui.panR.parentElement.style.transform = `rotate(${-deg}deg)`;
+
+        if (sym === "=") {
+            const Lx = model.left.x, Lu = model.left.u;
+            const Rx = model.right.x, Ru = model.right.u;
+            
+            const L_ready = (Lx !== 0 && Lu === 0 && Rx === 0);
+            const R_ready = (Rx !== 0 && Ru === 0 && Lx === 0);
+            
+            if (L_ready || R_ready) {
+                ui.divSec.style.display = 'block';
+                document.getElementById('divInput').value = '';
+            } else {
+                ui.divSec.style.display = 'none';
+            }
+        } else {
+            ui.divSec.style.display = 'none';
+        }
+    }
+
+    function fmt(d) {
+        let s = "";
+        if (d.x !== 0) s += (d.x === 1 ? "x" : d.x === -1 ? "-x" : d.x + "x");
+        if (d.u !== 0) {
+            if (s) s += (d.u > 0 ? " + " + d.u : " - " + Math.abs(d.u));
+            else s += d.u;
+        }
+        return s || "0";
+    }
+
+    // === DIVISION ===
+    function runDivision() {
+        const val = parseFloat(ui.divIn.value);
+        ui.divRes.innerHTML = '';
+        ui.ansZone.innerHTML = '';
+        ui.divErr.style.display = 'none';
+
+        let coeff = model.left.x !== 0 ? model.left.x : model.right.x;
+        let total = model.left.x !== 0 ? model.right.u : model.left.u;
+
+        if (val === coeff) {
+            finish(val, total);
+        } else {
+            ui.divErr.style.display = 'block';
+        }
+    }
+
+    // تابع ساخت کسر عمودی
+    function getVerticalFractionHtml(num, den) {
+        const sign = (num * den < 0) ? '<span class="frac-sign">-</span>' : '';
+        const n = Math.abs(num);
+        const d = Math.abs(den);
+        return `${sign}<div class="frac-box"><div class="frac-col"><span class="frac-num">${n}</span><span class="frac-den">${d}</span></div></div>`;
+    }
+
+    function gcd(a, b) { return b === 0 ? a : gcd(b, a % b); }
+
+    function finish(div, total) {
+        ui.scale.style.display = 'none';
+        ui.ctrl.style.display = 'none';
+        ui.live.style.display = 'none';
+
+        const rawVal = total / div;
+        
+        const common = gcd(Math.abs(total), Math.abs(div));
+        const simN = total / common;
+        const simD = div / common;
+
+        for (let i = 0; i < Math.abs(div); i++) {
+            const box = document.createElement('div');
+            box.className = 'mini-box';
+            
+            let html = `<div class="item item-x pos">x</div> <span>=</span>`;
+            
+            if (Number.isInteger(rawVal)) {
+                for(let k=0; k<Math.abs(rawVal); k++) {
+                    html += `<div class="item item-unit ${rawVal>=0?'pos':'neg'}">${rawVal>=0?'+1':'-1'}</div>`;
+                }
+                if(rawVal===0) html += "0";
+            } else {
+                html += getVerticalFractionHtml(total, div);
+            }
+            box.innerHTML = html;
+            ui.divRes.appendChild(box);
+        }
+
+        const final = document.createElement('div');
+        final.className = 'final-msg';
+        ui.ansZone.style.display = 'flex';
+        
+        let resultHtml = `x = `;
+        if (Number.isInteger(rawVal)) {
+            if (Math.abs(div) !== 1) {
+                 resultHtml += `${getVerticalFractionHtml(total, div)} = ${rawVal}`;
+            } else {
+                 resultHtml += `${rawVal}`;
+            }
+        } else {
+            resultHtml += getVerticalFractionHtml(total, div);
+            if (Math.abs(total) !== Math.abs(simN) || Math.abs(div) !== Math.abs(simD)) {
+                resultHtml += ` = ${getVerticalFractionHtml(simN, simD)}`;
+            }
+        }
+        
+        final.innerHTML = resultHtml;
+        ui.ansZone.appendChild(final);
+    }
+</script>
+
+</body>
+</html>
